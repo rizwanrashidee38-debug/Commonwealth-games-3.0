@@ -1,1 +1,601 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commonwealth Games Committee Simulator</title>
+    <style>
+        :root {
+            --primary: #d32f2f;
+            --secondary: #ffb300;
+            --dark: #121212;
+            --panel: #1e1e1e;
+            --light: #e0e0e0;
+            --success: #388e3c;
+            --info: #0288d1;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--dark); color: var(--light); padding: 20px; line-height: 1.6; }
+        .container { max-width: 1050px; margin: 0 auto; background: var(--panel); padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-top: 5px solid var(--secondary); }
+        h1, h2, h3, h4 { color: var(--secondary); margin-bottom: 15px; }
+        h1 { text-align: center; border-bottom: 1px solid #333; padding-bottom: 15px; }
+        
+        .screen { display: none; animation: fadeIn 0.4s ease-in-out; }
+        .screen.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Interactive Elements */
+        button { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.2s; margin: 10px 0; text-transform: uppercase; letter-spacing: 1px; }
+        button:hover { background: #f44336; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(211, 47, 47, 0.4); }
+        button:disabled { background: #555; cursor: not-allowed; transform: none; box-shadow: none; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: 1px solid #444; background: #2a2a2a; color: white; font-size: 16px; }
+
+        /* Layouts */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .card { background: #2a2a2a; padding: 20px; border-radius: 8px; border-left: 4px solid var(--primary); margin-bottom: 15px; }
+        .card-highlight { border-left-color: var(--secondary); background: #332b18; }
+
+        /* Mini-Game Tiles */
+        .tile-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 30px 0; }
+        .tile { background: #333; height: 140px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: bold; border-radius: 12px; cursor: pointer; border: 3px dashed #555; transition: 0.3s; color: var(--secondary); box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
+        .tile:hover { background: #444; border-color: var(--secondary); transform: scale(1.05); }
+        .tile.revealed { background: var(--info); color: white; border: 3px solid #000; pointer-events: none; transform: scale(1); box-shadow: none; }
+
+        /* Tables & Data */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #2a2a2a; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #444; }
+        th { background: #222; color: var(--secondary); font-weight: 600; text-transform: uppercase; font-size: 14px; }
+        tr:hover { background: #3d3d3d; }
+        .table-container { max-height: 350px; overflow-y: auto; border: 1px solid #444; border-radius: 8px; }
+
+        /* UI Components */
+        .progress-bar { width: 100%; background: #444; height: 12px; border-radius: 6px; margin: 15px 0; overflow: hidden; }
+        .progress-fill { background: var(--success); height: 100%; width: 0%; transition: width 0.4s ease; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .gold { color: #ffd700; font-weight: bold; } .silver { color: #c0c0c0; font-weight: bold; } .bronze { color: #cd7f32; font-weight: bold; }
+        .text-center { text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- SCREEN 1: WELCOME & SETUP -->
+    <div id="screen-welcome" class="screen active">
+        <h1>🏅 Commonwealth Games Committee Simulator</h1>
+        <div class="card">
+            <h3>Establish Your Legacy</h3>
+            <p>Welcome! Step into the shoes of the Chairman of your nation's Commonwealth Committee. You will guide your country through decades of sporting history, starting with the iconic <strong>2010 New Delhi Games</strong>.</p>
+        </div>
+        
+        <div class="grid-2">
+            <div>
+                <label for="chairman-name">Your Name (Chairman):</label>
+                <input type="text" id="chairman-name" placeholder="e.g., Anurag Thakur...">
+            </div>
+            <div>
+                <label for="country-select">Select Your Nation:</label>
+                <select id="country-select" onchange="previewCountryStart()"></select>
+            </div>
+        </div>
+
+        <div id="country-preview-start" class="card card-highlight"></div>
+
+        <button onclick="inaugurateCareer()" style="width: 100%; margin-top:20px;">Take Office & Begin Career</button>
+    </div>
+
+    <!-- SCREEN 2: PRE-SEASON DELEGATION (Runs every season) -->
+    <div id="screen-preseason" class="screen">
+        <h1 id="preseason-title">Pre-Season Strategy</h1>
+        <div class="grid-2">
+            <div class="card">
+                <h3>🌍 National Profile</h3>
+                <p id="ps-nation-name" style="font-size: 1.2rem; font-weight: bold; color: var(--secondary);"></p>
+                <ul style="list-style: none; margin-top: 10px; color: #ccc;">
+                    <li id="ps-pop"></li>
+                    <li id="ps-gdp"></li>
+                    <li id="ps-res"></li>
+                    <li id="ps-talent"></li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>📊 Logistics & Delegation</h3>
+                <p>As Chairman, you must select how many athletes to send. A massive delegation requires huge GDP and Resources to maintain elite training camps. Over-extending will result in poor facilities.</p>
+                <label for="rep-slider">Athlete Delegation Size: <strong id="rep-display" style="color:var(--info);">50</strong></label>
+                <input type="range" id="rep-slider" min="10" max="400" value="50" oninput="updateDelegationPreview()">
+                
+                <div id="facility-preview" style="margin-top: 15px; padding: 10px; background: #111; border-radius: 6px;">
+                    <!-- Updated via JS -->
+                </div>
+            </div>
+        </div>
+        <button onclick="finalizePreSeason()" style="width: 100%; font-size: 1.2rem; background: var(--success);">Finalize Contingent & Travel to Games</button>
+    </div>
+
+    <!-- SCREEN 3: DASHBOARD -->
+    <div id="screen-dashboard" class="screen">
+        <h1 id="dash-year-host"></h1>
+        
+        <div class="grid-3">
+            <div class="card">
+                <h4>Committee Chairman</h4>
+                <p id="dash-chairman" style="font-weight:bold; font-size:1.1rem;"></p>
+                <p id="dash-country" style="color:var(--secondary);"></p>
+            </div>
+            <div class="card">
+                <h4>Current Delegation</h4>
+                <p><span id="dash-reps" style="font-weight:bold; color:var(--info);"></span> Athletes Sent</p>
+                <p>Facilities: <span id="dash-facilities" style="font-weight:bold;"></span></p>
+            </div>
+            <div class="card">
+                <h4>Training Impact</h4>
+                <p>Performance Multiplier:</p>
+                <p id="dash-mod" style="font-size: 1.5rem; font-weight:bold; color:var(--success);"></p>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div>
+                <h3>📅 Event Timetable</h3>
+                <div class="table-container">
+                    <table id="schedule-table">
+                        <thead><tr><th>Sport Event</th><th>Action</th></tr></thead>
+                        <tbody id="schedule-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div>
+                <h3>🥇 Medal Tallies</h3>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <button onclick="showTally('current')" style="flex:1; padding:8px; font-size:14px; margin:0;">Current Games</button>
+                    <button onclick="showTally('alltime')" style="flex:1; padding:8px; font-size:14px; margin:0; background:#555;">All-Time</button>
+                </div>
+                <div class="table-container" style="max-height: 280px;">
+                    <table id="tally-table">
+                        <thead><tr><th>Nation</th><th>🥇</th><th>🥈</th><th>🥉</th></tr></thead>
+                        <tbody id="tally-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div id="end-season-panel" class="card card-highlight text-center" style="display:none; margin-top:20px;">
+            <h3>Closing Ceremony</h3>
+            <p>All events for this season have concluded!</p>
+            <button onclick="advanceSeason()" style="background:var(--success); font-size:1.2rem; margin-top:10px;">Proceed to Next Cycle</button>
+        </div>
+    </div>
+
+    <!-- SCREEN 4: TILE MINI-GAME -->
+    <div id="screen-game" class="screen">
+        <h2 id="game-sport-title" class="text-center"></h2>
+        
+        <div class="grid-2">
+            <div class="card">
+                <h3>Performance Tracker</h3>
+                <p>Attempts Remaining: <span id="game-chances" style="font-size:1.2rem; font-weight:bold; color:var(--info);">10</span> / 10</p>
+                <div class="progress-bar"><div id="game-progress" class="progress-fill"></div></div>
+                <p>Accumulated Output: <span id="game-player-score" style="font-size:1.5rem; font-weight:bold; color:var(--secondary);">0</span></p>
+            </div>
+            <div class="card">
+                <h3>Event Briefing</h3>
+                <p>Analyze the tiles. Your training facilities multiplier is actively scaling your raw talent. Pick tiles to generate your athlete's output per second/attempt.</p>
+                <p id="game-unit-desc" style="color:#aaa; font-size:0.9rem; margin-top:10px;"></p>
+            </div>
+        </div>
+
+        <div class="tile-container">
+            <div class="tile" onclick="selectTile(0)">?</div>
+            <div class="tile" onclick="selectTile(1)">?</div>
+            <div class="tile" onclick="selectTile(2)">?</div>
+            <div class="tile" onclick="selectTile(3)">?</div>
+        </div>
+    </div>
+
+    <!-- SCREEN 5: EVENT RESULTS PODIUM -->
+    <div id="screen-results" class="screen">
+        <h1 class="text-center">Final Standings</h1>
+        <h3 id="results-sport-title" class="text-center" style="color:#ccc;"></h3>
+        
+        <div class="table-container" style="margin-top:20px;">
+            <table>
+                <thead><tr><th>Rank</th><th>Nation</th><th>Result</th><th>Medal</th></tr></thead>
+                <tbody id="results-body"></tbody>
+            </table>
+        </div>
+
+        <button onclick="returnToDashboard()" style="width:100%; margin-top:20px; background:var(--info);">Return to Chairman Dashboard</button>
+    </div>
+</div>
+
+<script>
+// --- 1. CORE DATABASE ---
+const NATIONS = [
+    { name: "India", gdp: 4, pop: 5, res: 4, baseline: 8.5, desc: "Huge population and decent economy. Great talent pool capable of bringing medals if trained well." },
+    { name: "Australia", gdp: 5, pop: 2, res: 5, baseline: 9.5, desc: "A sporting powerhouse with elite high-performance infrastructure." },
+    { name: "England", gdp: 5, pop: 3, res: 4, baseline: 9.2, desc: "Deep pockets and consistent medalists across varied disciplines." },
+    { name: "Canada", gdp: 5, pop: 2, res: 5, baseline: 8.8, desc: "Strong economy allowing specialized winter and field training." },
+    { name: "South Africa", gdp: 3, pop: 3, res: 4, baseline: 8.2, desc: "Robust athletic talent, particularly in track and field." },
+    { name: "Jamaica", gdp: 2, pop: 1, res: 2, baseline: 9.0, desc: "Lower GDP but legendary raw talent in sprint events." },
+    { name: "Kenya", gdp: 2, pop: 3, res: 2, baseline: 8.6, desc: "Unmatched endurance running talents despite limited economic resources." },
+    { name: "New Zealand", gdp: 4, pop: 1, res: 3, baseline: 8.5, desc: "Efficient systems maximizing a small but highly capable population." },
+    { name: "Nigeria", gdp: 3, pop: 5, res: 3, baseline: 7.8, desc: "Massive population offering raw power and agility." },
+    { name: "Malaysia", gdp: 4, pop: 2, res: 3, baseline: 7.6, desc: "Strong backing in racquet sports and diving." }
+];
+// Auto-fill up to 50 nations
+const prefixes = ["Republic of ", "Kingdom of ", "Islands of ", "Federation of "];
+const suffixes = ["St. Kitts", "Fiji", "Samoa", "Uganda", "Cyprus", "Malta", "Ghana", "Bahamas"];
+while(NATIONS.length < 50) {
+    let randName = `${prefixes[Math.floor(Math.random()*prefixes.length)]} ${suffixes[Math.floor(Math.random()*suffixes.length)]} ${NATIONS.length}`;
+    NATIONS.push({
+        name: randName,
+        gdp: Math.floor(Math.random() * 3) + 1,
+        pop: Math.floor(Math.random() * 3) + 1,
+        res: Math.floor(Math.random() * 3) + 1,
+        baseline: 6.0 + (Math.random() * 2),
+        desc: "A developing commonwealth nation aiming to make its mark."
+    });
+}
+
+const SEASONS = [
+    { year: 2010, host: "New Delhi (India)" },
+    { year: 2014, host: "Glasgow (Scotland)" },
+    { year: 2018, host: "Gold Coast (Australia)" },
+    { year: 2022, host: "Birmingham (England)" },
+    { year: 2026, host: "Victoria (Australia / Relocated)" },
+    { year: 2030, host: "Hamilton (Canada - Proposed)" }
+];
+
+// Generate 30 Field & Track Sports
+const BASE_SPORTS = [
+    "Athletics (100m Sprint)", "Athletics (400m Hurdles)", "Athletics (Long Jump)", "Athletics (Javelin Throw)", "Athletics (Shot Put)",
+    "Swimming (50m Freestyle)", "Swimming (100m Butterfly)", "Diving (10m Platform)", "Cycling (Track Sprint)", "Cycling (Road Race)",
+    "Gymnastics (Vault)", "Gymnastics (Floor)", "Weightlifting (Snatch)", "Weightlifting (Clean & Jerk)", "Powerlifting (Bench Press)",
+    "Boxing (Heavyweight)", "Judo (Middleweight)", "Wrestling (Freestyle)", "Squash (Singles)", "Badminton (Singles)",
+    "Table Tennis (Singles)", "Tennis (Singles)", "Lawn Bowls", "Archery (Recurve)", "Shooting (10m Air Rifle)",
+    "Triathlon", "Rowing (Single Sculls)", "Hockey", "Rugby Sevens", "Cricket T20"
+];
+
+let SPORTS_DATABASE = [];
+BASE_SPORTS.forEach((sport, index) => {
+    let isTimed = sport.includes("Sprint") || sport.includes("Swimming") || sport.includes("Cycling") || sport.includes("Rowing") || sport.includes("Triathlon");
+    
+    ["Men's", "Women's", "Mixed"].forEach(cat => {
+        SPORTS_DATABASE.push({
+            name: `${sport} - ${cat}`,
+            unit: isTimed ? "sec" : "pts",
+            inverse: isTimed // For time, lower is better. For points, higher is better.
+        });
+    });
+});
+
+// --- 2. STATE MANAGEMENT ---
+let state = {
+    seasonIndex: 0,
+    chairman: "",
+    country: null,
+    currentDelegation: 0,
+    facilityMod: 1.0,
+    facilityName: "",
+    tallyCurrent: {},
+    tallyAllTime: {},
+    schedule: [],
+    game: { sport: null, chances: 10, score: 0, tileVals: [], idx: -1 }
+};
+
+// --- 3. INITIALIZATION & SETUP ---
+window.onload = () => {
+    const select = document.getElementById("country-select");
+    NATIONS.forEach((nat, i) => {
+        let opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = nat.name;
+        select.appendChild(opt);
+    });
+    
+    // Init tallies
+    NATIONS.forEach(n => {
+        state.tallyAllTime[n.name] = { gold: 0, silver: 0, bronze: 0 };
+    });
+    
+    previewCountryStart();
+};
+
+function switchScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(`screen-${id}`).classList.add('active');
+}
+
+function previewCountryStart() {
+    const nat = NATIONS[document.getElementById("country-select").value];
+    document.getElementById("country-preview-start").innerHTML = `
+        <strong>${nat.name} Profile:</strong><br>
+        <em>${nat.desc}</em><br><br>
+        👥 Population: ${"█".repeat(nat.pop)} (${nat.pop}/5)<br>
+        💰 Economy/GDP: ${"█".repeat(nat.gdp)} (${nat.gdp}/5)<br>
+        ⚙️ Resources: ${"█".repeat(nat.res)} (${nat.res}/5)<br>
+        🏅 Base Talent: ${(nat.baseline).toFixed(1)} / 10
+    `;
+}
+
+function inaugurateCareer() {
+    state.chairman = document.getElementById("chairman-name").value || "Hon. Chairman";
+    state.country = NATIONS[document.getElementById("country-select").value];
+    startPreSeason();
+}
+
+// --- 4. PRE-SEASON (DELEGATION SETUP) ---
+function startPreSeason() {
+    const currentSeason = SEASONS[state.seasonIndex];
+    document.getElementById("preseason-title").innerHTML = `Pre-Season Strategy<br><span style="font-size:1.2rem; color:var(--light);">Road to ${currentSeason.year} ${currentSeason.host}</span>`;
+    
+    document.getElementById("ps-nation-name").textContent = state.country.name;
+    document.getElementById("ps-pop").textContent = `Population Tier: ${state.country.pop}/5`;
+    document.getElementById("ps-gdp").textContent = `GDP Tier: ${state.country.gdp}/5`;
+    document.getElementById("ps-res").textContent = `Resources: ${state.country.res}/5`;
+    document.getElementById("ps-talent").textContent = `Inherent Medal Chances: ${state.country.baseline > 8 ? 'High' : 'Moderate'}`;
+
+    const slider = document.getElementById("rep-slider");
+    slider.max = state.country.pop * 80; // Larger pop = can send more athletes
+    slider.value = Math.floor(slider.max / 2);
+    
+    updateDelegationPreview();
+    switchScreen("preseason");
+}
+
+function updateDelegationPreview() {
+    const reps = document.getElementById("rep-slider").value;
+    document.getElementById("rep-display").textContent = reps;
+    
+    // GDP allows maintaining good facilities for athletes.
+    // If you send too many athletes relative to GDP, facilities drop.
+    const capacity = state.country.gdp * 40; 
+    const ratio = reps / capacity;
+    
+    let preview = document.getElementById("facility-preview");
+    
+    if(ratio > 1.5) {
+        state.facilityName = "Overcrowded & Underfunded Camps";
+        state.facilityMod = 0.85; // 15% penalty
+        preview.innerHTML = `<span style="color:var(--primary);">⚠️ Warning: Delegation exceeds economic capacity. Training facilities will be severely strained. (Multiplier: 0.85x)</span>`;
+    } else if(ratio < 0.6) {
+        state.facilityName = "Elite Specialized High-Performance Centers";
+        state.facilityMod = 1.20; // 20% bonus
+        preview.innerHTML = `<span style="color:var(--success);">✨ Excellent: Concentrated budget allows for elite coaching and top-tier facilities. (Multiplier: 1.20x)</span>`;
+    } else {
+        state.facilityName = "Standard National Sports Complexes";
+        state.facilityMod = 1.00; // Normal
+        preview.innerHTML = `<span style="color:var(--secondary);">✅ Balanced: Standard facilities matching normal expectations. (Multiplier: 1.00x)</span>`;
+    }
+}
+
+function finalizePreSeason() {
+    state.currentDelegation = document.getElementById("rep-slider").value;
+    
+    // Setup dashboard vars
+    const season = SEASONS[state.seasonIndex];
+    document.getElementById("dash-year-host").textContent = `🏆 ${season.year} Commonwealth Games - ${season.host}`;
+    document.getElementById("dash-chairman").textContent = state.chairman;
+    document.getElementById("dash-country").textContent = state.country.name;
+    document.getElementById("dash-reps").textContent = state.currentDelegation;
+    document.getElementById("dash-facilities").textContent = state.facilityName;
+    document.getElementById("dash-mod").textContent = `${state.facilityMod}x`;
+
+    // Reset current tally
+    NATIONS.forEach(n => state.tallyCurrent[n.name] = { gold: 0, silver: 0, bronze: 0 });
+
+    // Generate Schedule (Pick 12 random events for this year to keep UI clean)
+    let shuffledSports = [...SPORTS_DATABASE].sort(() => 0.5 - Math.random());
+    state.schedule = shuffledSports.slice(0, 12).map(sp => ({ ...sp, completed: false }));
+
+    document.getElementById("end-season-panel").style.display = "none";
+    renderSchedule();
+    showTally('current');
+    switchScreen("dashboard");
+}
+
+function renderSchedule() {
+    const tbody = document.getElementById("schedule-body");
+    tbody.innerHTML = "";
+    
+    let allDone = true;
+    state.schedule.forEach((ev, idx) => {
+        let tr = document.createElement("tr");
+        let actionHTML = ev.completed 
+            ? `<span class="badge" style="background:var(--success);">Finished</span>` 
+            : `<button onclick="startEvent(${idx})" style="padding: 6px 12px; font-size:12px; margin:0;">Enter Event</button>`;
+        
+        tr.innerHTML = `<td>${ev.name}</td><td>${actionHTML}</td>`;
+        tbody.appendChild(tr);
+        if(!ev.completed) allDone = false;
+    });
+
+    if(allDone && state.schedule.length > 0) {
+        document.getElementById("end-season-panel").style.display = "block";
+    }
+}
+
+// --- 5. MINI-GAME MECHANICS ---
+function startEvent(idx) {
+    state.game.sport = state.schedule[idx];
+    state.game.idx = idx;
+    state.game.chances = 10;
+    state.game.score = 0;
+
+    document.getElementById("game-sport-title").textContent = state.game.sport.name;
+    document.getElementById("game-chances").textContent = "10";
+    document.getElementById("game-player-score").textContent = "0";
+    document.getElementById("game-progress").style.width = "0%";
+    
+    let desc = state.game.sport.inverse 
+        ? `Objective: Find tiles with the LOWEST times (${state.game.sport.unit}). Lower cumulative time wins the race.`
+        : `Objective: Find tiles with the HIGHEST scores (${state.game.sport.unit}). Highest cumulative points win the event.`;
+    document.getElementById("game-unit-desc").textContent = desc;
+
+    rollTiles();
+    switchScreen("game");
+}
+
+function rollTiles() {
+    const tiles = document.querySelectorAll(".tile");
+    state.game.tileVals = [];
+
+    tiles.forEach(tile => {
+        tile.classList.remove("revealed");
+        tile.textContent = "?";
+        
+        // Base value modified by country baseline and facility modifier
+        let base = (Math.random() * 4) + state.country.baseline; 
+        
+        if(state.game.sport.inverse) {
+            // For time, good facility = lower time
+            base = base / state.facilityMod;
+        } else {
+            // For points, good facility = higher points
+            base = base * state.facilityMod;
+        }
+        
+        state.game.tileVals.push(parseFloat(base.toFixed(2)));
+    });
+}
+
+function selectTile(tIdx) {
+    if(state.game.chances <= 0) return;
+
+    let val = state.game.tileVals[tIdx];
+    state.game.score += val;
+    state.game.chances--;
+
+    const tiles = document.querySelectorAll(".tile");
+    tiles[tIdx].textContent = `${val}${state.game.sport.unit}`;
+    tiles[tIdx].classList.add("revealed");
+
+    document.getElementById("game-chances").textContent = state.game.chances;
+    document.getElementById("game-player-score").textContent = state.game.score.toFixed(2);
+    document.getElementById("game-progress").style.width = `${(10 - state.game.chances) * 10}%`;
+
+    if(state.game.chances > 0) {
+        setTimeout(rollTiles, 500);
+    } else {
+        setTimeout(resolveEvent, 1000);
+    }
+}
+
+// --- 6. SIMULATION LOGIC ---
+function resolveEvent() {
+    let results = [];
+    
+    // Player Score
+    results.push({ name: state.country.name, score: state.game.score, isPlayer: true });
+
+    // Pick 9 AI competitors realistically based on their stats
+    let opponents = NATIONS.filter(n => n.name !== state.country.name)
+                           .sort(() => 0.5 - Math.random())
+                           .slice(0, 9);
+                           
+    opponents.forEach(opp => {
+        // AI Simulation: 10 chances * (baseline + random variance) * GDP advantage
+        let aiScore = 0;
+        let gdpAdvantage = opp.gdp * 0.05; // Up to 25% bonus
+        
+        for(let i=0; i<10; i++) {
+            let roll = (Math.random() * 4) + opp.baseline;
+            if(state.game.sport.inverse) {
+                roll = roll / (1 + gdpAdvantage);
+            } else {
+                roll = roll * (1 + gdpAdvantage);
+            }
+            aiScore += roll;
+        }
+        results.push({ name: opp.name, score: parseFloat(aiScore.toFixed(2)), isPlayer: false });
+    });
+
+    // Sort: If inverse (Time), lowest is best. If normal (Points), highest is best.
+    if(state.game.sport.inverse) {
+        results.sort((a, b) => a.score - b.score);
+    } else {
+        results.sort((a, b) => b.score - a.score);
+    }
+
+    // Award Medals
+    results[0].medal = "🥇 Gold"; 
+    state.tallyCurrent[results[0].name].gold++; state.tallyAllTime[results[0].name].gold++;
+    
+    results[1].medal = "🥈 Silver"; 
+    state.tallyCurrent[results[1].name].silver++; state.tallyAllTime[results[1].name].silver++;
+    
+    results[2].medal = "🥉 Bronze"; 
+    state.tallyCurrent[results[2].name].bronze++; state.tallyAllTime[results[2].name].bronze++;
+
+    // Display Results
+    document.getElementById("results-sport-title").textContent = state.game.sport.name;
+    const tbody = document.getElementById("results-body");
+    tbody.innerHTML = "";
+
+    results.forEach((res, i) => {
+        let tr = document.createElement("tr");
+        if(res.isPlayer) tr.style.background = "rgba(211, 47, 47, 0.2)"; // Highlight player
+        tr.innerHTML = `
+            <td>${i + 1}</td>
+            <td>${res.name} ${res.isPlayer ? "(You)" : ""}</td>
+            <td>${res.score.toFixed(2)} ${state.game.sport.unit}</td>
+            <td style="font-weight:bold;">${res.medal || "-"}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    state.schedule[state.game.idx].completed = true;
+    switchScreen("results");
+}
+
+function returnToDashboard() {
+    renderSchedule();
+    showTally('current');
+    switchScreen("dashboard");
+}
+
+// --- 7. TALLY & PROGRESSION ---
+function showTally(type) {
+    const tbody = document.getElementById("tally-body");
+    tbody.innerHTML = "";
+    
+    let source = type === 'current' ? state.tallyCurrent : state.tallyAllTime;
+    
+    // Convert to array and sort: Gold -> Silver -> Bronze
+    let sorted = Object.keys(source).map(k => ({ name: k, ...source[k] }))
+        .sort((a, b) => {
+            if (b.gold !== a.gold) return b.gold - a.gold;
+            if (b.silver !== a.silver) return b.silver - a.silver;
+            return b.bronze - a.bronze;
+        });
+
+    sorted.forEach(row => {
+        if(type === 'current' && row.gold===0 && row.silver===0 && row.bronze===0) return; // Hide zeros in current
+        
+        let tr = document.createElement("tr");
+        if(row.name === state.country.name) tr.style.background = "rgba(255, 179, 0, 0.15)";
+        
+        tr.innerHTML = `
+            <td>${row.name}</td>
+            <td class="gold">${row.gold}</td>
+            <td class="silver">${row.silver}</td>
+            <td class="bronze">${row.bronze}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function advanceSeason() {
+    if(state.seasonIndex < SEASONS.length - 1) {
+        state.seasonIndex++;
+        startPreSeason(); // Go back to delegation setup for the new year
+    } else {
+        alert("🎉 Campaign Complete! You have led your nation through all scheduled Commonwealth Games cycles. Check the All-Time Tally to see your final legacy.");
+        showTally('alltime');
+    }
+}
+</script>
+</body>
+</html>
